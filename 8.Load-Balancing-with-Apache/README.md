@@ -1,6 +1,6 @@
 # Load-Balancing-with-Apache
 
-In my [previous project](https://github.com/Micah-Shallom/DevOps-Website-Solution) , I introduced the concept of file sharing on multiple web servers to access same shared content on an independent external NFS server.
+I introduced the concept of file sharing on multiple web servers to access same shared content on an independent external NFS server.
 
 For the website solution implemented, how can we balance users request traffic across the 3 web servers we setup 
 ([horizontal scaling](https://www.cloudzero.com/blog/horizontal-vs-vertical-scaling#:~:text=Horizontal%20scaling%20(aka%20scaling%20out,server%20may%20be%20your%20solution.))) so as not to put excess load on a single server whilst the others are idle. 
