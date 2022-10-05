@@ -5,9 +5,6 @@ Jenkins is an open-source Continuous Integration server written in Java for orch
 ![jenkins_architecture](./Img/jenkins-continuous-integration-min.png)
 #
 
-
-In the last [project I implemented](https://github.com/Micah-Shallom/Load-Balancing-with-Apache/blob/main/README.md), I configured an apache load balancer to my web application architecture to route user traffic across multiple web servers.
-
 Here I introduce Jenkins to automate code delivery to the NFS server
 
 
