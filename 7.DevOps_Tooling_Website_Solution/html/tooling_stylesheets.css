@@ -1,0 +1,77 @@
+
+body {
+    color: #fff;
+    background: hsl(230, 11%, 11%);
+}
+
+/*  header */
+h1 {
+    text-align: center;
+    font-size: 60px;
+    color: rgb(250, 239, 239);
+    margin-top: 50px;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+h2 {
+    text-align: center;
+    font-size: 30px;
+    font-family: cursive;
+}
+
+/*Logo*/
+
+
+.Logo{
+    margin: 0, auto;
+    text-align: center;
+}
+
+.Logo:hover{
+    transform: scale(1.07);
+}
+
+
+/*Global Tool Image */
+
+.container {
+   width: 80%;
+    margin: auto;
+    overflow: hidden;
+    display: flex;
+}
+
+.box {
+    float: left;
+    width: 30%;
+    margin: 10px;
+    padding: 10px;
+    text-align: center;
+    border: 1px #ddd solid;
+    border-radius: 5px;
+    box-shadow: 1px 5px 10px #ddd;
+    transition: all 0.2s;
+    box-sizing: border-box;
+}
+
+
+.box:hover {
+    left: 2px;
+    transform: scale(1.07);
+    background-color: rgb(44, 135, 209);
+}
+
+#boxes .box img {
+    width: 90px;
+    height: 90px;
+}
+
+.box {
+    float: none;
+    width: 70%;
+    margin: 10px auto;
+    overflow: hidden;
+}
+
+
+
