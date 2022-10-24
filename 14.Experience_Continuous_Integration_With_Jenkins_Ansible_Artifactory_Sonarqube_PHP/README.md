@@ -228,9 +228,263 @@ pipeline {
 #
 Our goal here is to deploy the Todo application onto servers directly from Artifactory rather than from git.
 
-- Updated Ansible with an Artifactory role, use this guide to create an Ansible role for Artifactory (ignore the Nginx part). 
+- Updated Ansible with an Artifactory role. Install aartifactory role from the Ansible galaxy repository. 
 
 - Now, open your web browser and type the URL https://. You will be redirected to the Jfrog Atrifactory page. Enter default username and password: admin/password. Once in create username and password and create your new repository. (Take note of the reopsitory name)
 
 On our jenkins server, install git and then pull our php-todo application into our server
+```
+https://github.com/darey-devops/php-todo.git
+```
+Installing PHP and other packages
+
+```
+yum module reset php -y
+yum module enable php:remi-7.4 -y
+yum install -y php php-common php-mbstring php-opcache php-intl php-xml php-gd php-curl php-mysqlnd php-fpm php-json
+systemctl start php-fpm
+systemctl enable php-fpm
+```
 ![](./img/14.php_install.png)
+
+On the Jenkins-Ansible server, install the 
+PLOT PLUGIN and ARTIFACTORY PLUGIN and set it up.
+Add the artifactory server IP to the JFROG global configuration
+![](./img/15.plugin.png)
+
+Run the jenkinsfile to trigger ansible playbook to setup artifactory on the artifactory server
+![](img/16.artifactory_run.png)
+
+Open port in artifactory security group
+
+![](img/17.artifactory_port.png)
+
+![](img/18.test_succes.png)
+![](img/18.artif_success.png)
+
+Create a GENERIC Repository called SHALLOM. This will be used to store our build artifacts
+![](img/21.repo_create.png)
+#
+
+## Integrate Artifactory repository with Jenkins
+#
+
+1. In VScode create a new Jenkinsfile in the php-Todo repository
+2. Using Blue Ocean, create a multibranch Jenkins pipeline
+3. Install mysql client: `sudo apt install mysql -y`
+4. Login into the DB-server(mysql server) and set the the bind address to 0.0.0.0: sudo vi /etc/mysql/mysql.conf.d/mysqld.cnf
+5. Create database and user. **NOTE**: The task of setting the database is done by the `MySQL` ansible role
+6. Run the php-todo pipeline  
+   
+![](img/19.db_homestead.png)
+![](img/20.evidence.png)
+
+7. Update Jenkinsfile with proper pipeline configuration. In the Checkout SCM stage ensure you specify the branch as main and change the git repository to yours.
+```
+pipeline {
+    agent any
+
+  stages {
+
+     stage("Initial cleanup") {
+          steps {
+            dir("${WORKSPACE}") {
+              deleteDir()
+            }
+          }
+        }
+
+    stage('Checkout SCM') {
+      steps {
+            git branch: 'main', url: 'https://github.com/Micah-Shallom/php-todo.git'
+      }
+    }
+
+    stage('Prepare Dependencies') {
+      steps {
+             sh 'mv .env.sample .env'
+             sh 'composer install'
+             sh 'php artisan migrate'
+             sh 'php artisan db:seed'
+             sh 'php artisan key:generate'
+      }
+    }
+  }
+}
+```
+When running we get an error. This is due to the fact that the Jenkins Server being the client server cant communicate with the DB server.
+
+![](./img/22.failure.png)
+
+We need to install mysql client on the Jenkins server and configure it.
+
+![](./img/23.mysql-client-install.png)
+![](./img/24.db_server_configure.png)
+
+The DB migration job passes after setting up the MYSQL client on the Jenkins server
+
+![](./img/25.php-dependencies-pipeline-success.png)
+
+Visualizing the PHP code analytics using the Jenkins Plot plugin.
+
+![](./img/26.plot_build_complete.png)
+![](./img/27.plots.png)
+
+8. Bundle the application code into an artifact (archived package) and upload to Artifactory
+- Install Zip: Sudo apt install zip -y
+```
+stage ('Package Artifact') {
+    steps {
+            sh 'zip -qr php-todo.zip ${WORKSPACE}/*'
+     }
+    }
+```
+9. Publish the resulted artifact into Artifactory making sure ti specify the target as the name of the artifactory repository you created earlier
+```
+stage ('Upload Artifact to Artifactory') {
+          steps {
+            script { 
+                 def server = Artifactory.server 'artifactory-server'                 
+                 def uploadSpec = """{
+                    "files": [
+                      {
+                       "pattern": "php-todo.zip",
+                       "target": "PBL/php-todo",
+                       "props": "type=zip;status=ready"
+
+                       }
+                    ]
+                 }""" 
+
+                 server.upload spec: uploadSpec
+               }
+            }
+
+        }
+```
+![](./img/28.all-php-complete.png)
+![](./img/29.jfrog-art.png)
+
+Deploy the application to the dev environment by launching Ansible pipeline. Ensure you update your inventory/dev with the Private IP of your TODO-server and your site.yml file is updated with todo play.
+
+```
+stage ('Deploy to Dev Environment') {
+    steps {
+    build job: 'ansible-project/main', parameters: [[$class: 'StringParameterValue', name: 'env', value: 'dev']], propagate: false, wait: true
+    }
+  }
+```
+#
+## SONARQUBE INSTALLATION
+#
+
+SonarQube is a tool that can be used to create quality gates for software projects, and the ultimate goal is to be able to ship only quality software code.
+
+Despite that DevOps CI/CD pipeline helps with fast software delivery, it is of the same importance to ensure the quality of such delivery. Hence, we will need SonarQube to set up Quality gates. In this project we will use predefined Quality Gates (also known as The Sonar Way). Software testers and developers would normally work with project leads and architects to create custom quality gates.
+
+
+## Setting Up SonarQube
+
+On the Ansible config management pipeline, execute the ansible playbook script to install sonarqube via a preconfigured sonarqube ansible role.
+
+![](./img/30.sonarqube_installs.png)
+
+When the pipeline is complete, access sonarqube from the browser using the `<sonarqube_server_url>:9000/sonar`
+
+![](./img/31.sonar-success.png)
+![](./img/32.setup-sonar.png)
+#
+## CONFIGURE SONARQUBE AND JENKINS FOR QUALITY GATE
+#
+- Install SonarQube Scanner plugin
+
+- Navigate to configure system in Jenkins. Add SonarQube server: Manage Jenkins > Configure System
+
+- To generate authentication token in SonarQube to to: `User > My Account > Security > Generate Tokens`
+- 
+![](./img/33.token.png)
+
+- Configure Quality Gate Jenkins Webhook in SonarQube – The URL should point to your Jenkins server http://{JENKINS_HOST}/sonarqube-webhook/ Go to:Administration > Configuration > Webhooks > Create
+
+![](./img/34.webhook.png)
+
+- Setup SonarQube scanner from Jenkins – Global Tool Configuration. Go to: Manage Jenkins > Global Tool Configuration
+
+- Update Jenkins Pipeline to include SonarQube scanning and Quality Gate. Making sure to place it before the "package artifact stage" Below is the snippet for a Quality Gate stage in Jenkinsfile.
+
+```
+stage('SonarQube Quality Gate') {
+    environment {
+        scannerHome = tool 'SonarQubeScanner'
+    }
+    steps {
+        withSonarQubeEnv('sonarqube') {
+            sh "${scannerHome}/bin/sonar-scanner"
+        }
+
+    }
+}
+```
+NOTE: The above step will fail because we have not updated sonar-scanner.properties.
+- Configure sonar-scanner.properties – From the step above, Jenkins will install the scanner tool on the Linux server. You will need to go into the tools directory on the server to configure the properties file in which SonarQube will require to function during pipeline execution. `cd /var/lib/jenkins/tools/hudson.plugins.sonar.SonarRunnerInstallation/SonarQubeScanner/conf/.`
+- Open sonar-scanner.properties file: `sudo vi sonar-scanner.properties` 
+- Add configuration related to php-todo project
+
+```
+sonar.host.url=http://<SonarQube-Server-IP-address>:9000
+sonar.projectKey=php-todo
+#----- Default source code encoding
+sonar.sourceEncoding=UTF-8
+sonar.php.exclusions=**/vendor/**
+sonar.php.coverage.reportPaths=build/logs/clover.xml
+sonar.php.tests.reportPath=build/logs/junit.xml 
+```
+#
+## End-to-End Pipeline Overview
+#
+
+Conditionally deploy to higher environments
+In the real world, developers will work on feature branch in a repository (e.g., GitHub or GitLab). There are other branches that will be used differently to control how software releases are done. You will see such branches as:
+
+Develop
+Master or Main
+(The * is a place holder for a version number, Jira Ticket name or some description. It can be something like Release-1.0.0)
+Feature/*
+Release/*
+Hotfix/*
+etc.
+
+There is a very wide discussion around release strategy, and git branching strategies which in recent years are considered under what is known as GitFlow (Have a read and keep as a bookmark – it is a possible candidate for an interview discussion, so take it seriously!)
+
+Assuming a basic gitflow implementation restricts only the develop branch to deploy code to Integration environment like sit.
+
+Let us update our Jenkinsfile to implement this:
+
+First, we will include a When condition to run Quality Gate whenever the running branch is either develop, hotfix, release, main, or master
+
+```
+stage('SonarQube Quality Gate') {
+      when { branch pattern: "^develop*|^hotfix*|^release*|^main*", comparator: "REGEXP"}
+        environment {
+            scannerHome = tool 'SonarQubeScanner'
+        }
+        steps {
+            withSonarQubeEnv('sonarqube') {
+                sh "${scannerHome}/bin/sonar-scanner -Dproject.settings=sonar-project.properties"
+            }
+            timeout(time: 1, unit: 'MINUTES') {
+                waitForQualityGate abortPipeline: true
+            }
+        }
+    }
+```
+
+![](./img/post.png)
+
+![](./img/36.success.png)
+
+![](./img/post2.png)
+#
+
+# VIDEO SHOWING PIPELINE RUN
+#
