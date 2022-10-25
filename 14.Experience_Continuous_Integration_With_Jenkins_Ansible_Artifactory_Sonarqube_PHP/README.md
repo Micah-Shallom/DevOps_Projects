@@ -488,3 +488,7 @@ stage('SonarQube Quality Gate') {
 
 # VIDEO SHOWING PIPELINE RUN
 #
+
+https://user-images.githubusercontent.com/64049432/197630757-861484fc-2ad4-4d77-9b90-5bc94735b340.mp4
+
+
