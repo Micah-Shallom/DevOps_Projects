@@ -1,7 +1,11 @@
 ## FURTHER IMPLEMENTATION OF INFRASTRUCTURE AUTOMATION WITH IAC USING TERRAFORM
 #
+#
+[Link To Code Implementation](https://github.com/Micah-Shallom/RCR-TERRAFORM-ARCHITECTURE.git)
+#
+#
 
-## Understading Basic Network Concepts
+## Understanding Basic Network Concepts
 #
 ### IP Address: 
 - An IP address is a unique address that identifies a device on the internet or a local network. IP stands for "Internet Protocol," which is the set of rules governing the format of data sent via the internet or local network.
