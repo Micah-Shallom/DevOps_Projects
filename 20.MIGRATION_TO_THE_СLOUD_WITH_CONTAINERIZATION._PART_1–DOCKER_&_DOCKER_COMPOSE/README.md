@@ -89,4 +89,131 @@ If you see a warning like below, it is acceptable to ignore:
 
 `mysql: [Warning] Using a password on the command line interface can be insecure.`
 
+
+## Prepare database schema
+#
+
+Now you need to prepare a database schema so that the Tooling application can connect to it.
+
+Clone the Tooling-app repository from here
+
+` $ git clone https://github.com/darey-devops/tooling.git `
+
+On your terminal, export the location of the SQL file
+
+`$ export tooling_db_schema=/tooling_db_schema.sql `
+
+You can find the tooling_db_schema.sql in the tooling/html/tooling_db_schema.sql folder of cloned repo.
+
+Verify that the path is exported
+
+`echo $tooling_db_schema`
+
+Use the SQL script to create the database and prepare the schema. With the docker exec command, you can execute a command in a running container.
+
+`$ docker exec -i mysql-server mysql -uroot -p$MYSQL_PW < $tooling_db_schema `
+
 ![](./img/5.tooling_schema.jpg)
+
+Update the .env file with connection details to the database
+The .env file is located in the html tooling/html/.env folder but not visible in terminal. you can use vi or nano
+
+sudo vi .env
+
+MYSQL_IP=mysqlserverhost
+MYSQL_USER=username
+MYSQL_PASS=client-secrete-password
+MYSQL_DBNAME=toolingdb
+
+![](./img/6.done.jpg)
+
+
+## Containerizing our Tooling application
+
+Make sure you have checked out your Tooling repo to your machine with Docker engine
+
+First, we need to build the Docker image the tooling app will use. The Tooling repo you cloned above has a Dockerfile for this purpose. Explore it and make sure you understand the code inside it.
+Run docker build command
+
+Launch the container with docker run
+
+Try to access your application via port exposed from a container
+
+![](./img/7.todo-complete.jpg)
+![](./img/8.dockerhub.jpg)
+#
+
+## PRACTICE TASK
+## Practice Task №1 – Implement a POC to migrate the PHP-Todo app into a containerized application.
+
+Download php-todo repository from here
+
+The project below will challenge you a little bit, but the experience there is very valuable for future projects.
+
+### Part 1
+- Write a Dockerfile for the TODO app
+- Run both database and app on your laptop Docker Engine
+- Access the application from the browser
+
+### Part 2
+- Create an account in Docker Hub
+- Create a new Docker Hub repository
+- Push the docker images from your PC to the repository
+
+### Part 3
+- Write a Jenkinsfile that will simulate a Docker Build and a Docker Push to the registry
+- Connect your repo to Jenkins
+- Create a multi-branch pipeline
+- Simulate a CI pipeline from a feature and master branch using previously created Jenkinsfile
+- Ensure that the tagged images from your Jenkinsfile have a prefix that suggests which branch the image was pushed from. For example, feature-0.0.1.
+- Verify that the images pushed from the CI can be found at the registry.
+![](./img/9.complete.jpg)
+#
+
+## Deployment with Docker Compose
+
+In this section, we will refactor the Tooling app POC so that we can leverage the power of Docker Compose.
+
+First, install Docker Compose on your workstation from here
+
+Create a file, name it tooling.yaml
+
+Begin to write the Docker Compose definitions with YAML syntax. The YAML file is used for defining services, networks, and volumes:
+
+```
+version: "3.9"
+services:
+  tooling_frontend:
+    build: .
+    ports:
+      - "5000:80"
+    volumes:
+      - tooling_frontend:/var/www/html
+    links:
+      - db
+  db:
+    image: mysql:5.7
+    restart: always
+    environment:
+      MYSQL_DATABASE: <The database name required by Tooling app>
+      MYSQL_USER: <The user required by Tooling app>
+      MYSQL_PASSWORD: <The password required by Tooling app>
+      MYSQL_RANDOM_ROOT_PASSWORD: '1'
+    volumes:
+      - db:/var/lib/mysql
+volumes:
+  tooling_frontend:
+  db:
+```
+
+Run the command to start the containers
+
+`docker-compose -f tooling.yaml  up -d `
+
+![](./img/10.dc.jpg)
+
+## Practice Task №2 – Complete Continous Integration With A Test Stage
+
+ The Jenkinsfile has been updated with a smoke test phase that tests our application endpoint and returns a status 200
+ 
+![](./img/9.complete.jpg)
